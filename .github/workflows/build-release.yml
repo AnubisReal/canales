@@ -2,8 +2,9 @@ name: Build and Release APK
 
 on:
   push:
-    tags:
-      - 'v*.*.*'  # Se ejecuta cuando creas un tag como v1.0.0
+    branches:
+      - main
+      - master
   workflow_dispatch:  # Permite ejecutar manualmente desde GitHub
 
 jobs:
@@ -46,16 +47,17 @@ jobs:
       
       - name: Create Release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
         with:
+          tag_name: v${{ steps.version.outputs.VERSION }}
+          name: Versión ${{ steps.version.outputs.VERSION }}
           files: build/app/outputs/flutter-apk/canales-v${{ steps.version.outputs.VERSION }}.apk
           body: |
-            ## 🎉 Nueva versión de Canales
+            ## 🎉 Nueva versión de Canales v${{ steps.version.outputs.VERSION }}
             
-            ### Descargar
-            Descarga el APK y instálalo en tu Android TV.
+            ### 📥 Descargar
+            Descarga el APK `canales-v${{ steps.version.outputs.VERSION }}.apk` y instálalo en tu Android TV.
             
-            ### Novedades
+            ### ✨ Novedades
             - Actualización automática desde GitHub Releases
             - Mejoras de rendimiento
             - Corrección de bugs
