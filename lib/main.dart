@@ -12,6 +12,7 @@ import 'screens/channel_detail_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/m3u_setup_screen.dart';
 import 'services/settings_service.dart';
+import 'services/update_service.dart';
 import 'dart:io' show Platform;
 import 'dart:async';
 
@@ -200,6 +201,104 @@ class _ChannelsScreenState extends State<ChannelsScreen>
     _loadChannels();
     _checkEpgStatus();
     _loadFavorites();
+    _checkForUpdates(); // Verificar actualizaciones al iniciar
+  }
+  
+  // Verificar si hay actualizaciones disponibles
+  Future<void> _checkForUpdates() async {
+    // Esperar 5 segundos para no interferir con la carga inicial
+    await Future.delayed(const Duration(seconds: 5));
+    
+    final updateInfo = await UpdateService.checkForUpdate();
+    
+    if (updateInfo != null && updateInfo['hasUpdate'] == true && mounted) {
+      _showUpdateDialog(updateInfo);
+    }
+  }
+  
+  // Mostrar diálogo de actualización disponible
+  void _showUpdateDialog(Map<String, dynamic> updateInfo) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.system_update, color: Colors.blue, size: 28),
+            SizedBox(width: 12),
+            Text(
+              '🎉 Actualización disponible',
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Nueva versión: ${updateInfo['version']}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              updateInfo['releaseNotes'] ?? 'Nueva versión disponible',
+              style: TextStyle(color: Colors.grey[400], fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Tamaño: ${(updateInfo['size'] / 1024 / 1024).toStringAsFixed(1)} MB',
+              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Más tarde',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _downloadAndInstallUpdate(updateInfo);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              'Actualizar ahora',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // Descargar e instalar actualización
+  Future<void> _downloadAndInstallUpdate(Map<String, dynamic> updateInfo) async {
+    // Mostrar diálogo de progreso
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _DownloadProgressDialog(
+        downloadUrl: updateInfo['downloadUrl'],
+      ),
+    );
   }
 
   Future<void> _loadFavorites() async {
@@ -2141,29 +2240,132 @@ class _ErrorScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 64),
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                color: Colors.red,
+                size: 64,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                error,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(onPressed: onRetry, child: const Text('Reintentar')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Widget para mostrar progreso de descarga de actualización
+class _DownloadProgressDialog extends StatefulWidget {
+  final String downloadUrl;
+
+  const _DownloadProgressDialog({required this.downloadUrl});
+
+  @override
+  State<_DownloadProgressDialog> createState() => _DownloadProgressDialogState();
+}
+
+class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
+  double _progress = 0.0;
+  bool _isDownloading = true;
+  String _status = 'Descargando actualización...';
+
+  @override
+  void initState() {
+    super.initState();
+    _startDownload();
+  }
+
+  Future<void> _startDownload() async {
+    final success = await UpdateService.downloadAndInstall(
+      downloadUrl: widget.downloadUrl,
+      onProgress: (progress) {
+        if (mounted) {
+          setState(() {
+            _progress = progress;
+          });
+        }
+      },
+    );
+
+    if (mounted) {
+      setState(() {
+        _isDownloading = false;
+        _status = success 
+            ? '✅ Actualización lista para instalar' 
+            : '❌ Error al descargar';
+      });
+
+      if (success) {
+        // Cerrar diálogo después de 2 segundos
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.grey[900],
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+      ),
+      title: const Row(
+        children: [
+          Icon(Icons.download, color: Colors.blue, size: 28),
+          SizedBox(width: 12),
+          Text(
+            'Actualizando',
+            style: TextStyle(color: Colors.white, fontSize: 18),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_isDownloading) ...[
+            LinearProgressIndicator(
+              value: _progress,
+              backgroundColor: Colors.grey[800],
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+            ),
             const SizedBox(height: 16),
-            const Text(
-              'Error al cargar canales',
-              style: TextStyle(
+            Text(
+              '${(_progress * 100).toStringAsFixed(0)}%',
+              style: const TextStyle(
                 color: Colors.white,
-                fontSize: 18,
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              error,
-              style: const TextStyle(color: Colors.grey, fontSize: 14),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(onPressed: onRetry, child: const Text('Reintentar')),
           ],
-        ),
+          const SizedBox(height: 12),
+          Text(
+            _status,
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontSize: 14,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
