@@ -203,101 +203,148 @@ class _ChannelsScreenState extends State<ChannelsScreen>
     _loadFavorites();
     _checkForUpdates(); // Verificar actualizaciones al iniciar
   }
-  
+
   // Verificar si hay actualizaciones disponibles
   Future<void> _checkForUpdates() async {
     // Esperar 5 segundos para no interferir con la carga inicial
     await Future.delayed(const Duration(seconds: 5));
-    
+
     final updateInfo = await UpdateService.checkForUpdate();
-    
+
     if (updateInfo != null && updateInfo['hasUpdate'] == true && mounted) {
       _showUpdateDialog(updateInfo);
     }
   }
-  
+
   // Mostrar diálogo de actualización disponible
   void _showUpdateDialog(Map<String, dynamic> updateInfo) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
-        title: const Row(
-          children: [
-            Icon(Icons.system_update, color: Colors.blue, size: 28),
-            SizedBox(width: 12),
-            Text(
-              '🎉 Actualización disponible',
-              style: TextStyle(color: Colors.white, fontSize: 18),
+      builder: (context) => PopScope(
+        canPop: false,
+        child: FocusScope(
+          autofocus: true,
+          child: AlertDialog(
+            backgroundColor: Colors.grey[900],
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            title: const Row(
+              children: [
+                Icon(Icons.system_update, color: Colors.blue, size: 28),
+                SizedBox(width: 12),
+                Text(
+                  '🎉 Actualización disponible',
+                  style: TextStyle(color: Colors.white, fontSize: 18),
+                ),
+              ],
             ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Nueva versión: ${updateInfo['version']}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Nueva versión: ${updateInfo['version']}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  updateInfo['releaseNotes'] ?? 'Nueva versión disponible',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Tamaño: ${(updateInfo['size'] / 1024 / 1024).toStringAsFixed(1)} MB',
+                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                ),
+              ],
+            ),
+            actions: [
+              Focus(
+                onKeyEvent: (node, event) {
+                  if (event is KeyDownEvent &&
+                      (event.logicalKey == LogicalKeyboardKey.select ||
+                          event.logicalKey == LogicalKeyboardKey.enter)) {
+                    Navigator.of(context).pop();
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                },
+                child: Builder(
+                  builder: (context) {
+                    final isFocused = Focus.of(context).hasFocus;
+                    return TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: TextButton.styleFrom(
+                        side: isFocused
+                            ? const BorderSide(color: Colors.blue, width: 2)
+                            : null,
+                      ),
+                      child: const Text(
+                        'Más tarde',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              updateInfo['releaseNotes'] ?? 'Nueva versión disponible',
-              style: TextStyle(color: Colors.grey[400], fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Tamaño: ${(updateInfo['size'] / 1024 / 1024).toStringAsFixed(1)} MB',
-              style: TextStyle(color: Colors.grey[500], fontSize: 12),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'Más tarde',
-              style: TextStyle(color: Colors.grey),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _downloadAndInstallUpdate(updateInfo);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+              Focus(
+                autofocus: true,
+                onKeyEvent: (node, event) {
+                  if (event is KeyDownEvent &&
+                      (event.logicalKey == LogicalKeyboardKey.select ||
+                          event.logicalKey == LogicalKeyboardKey.enter)) {
+                    Navigator.of(context).pop();
+                    _downloadAndInstallUpdate(updateInfo);
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                },
+                child: Builder(
+                  builder: (context) {
+                    final isFocused = Focus.of(context).hasFocus;
+                    return ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _downloadAndInstallUpdate(updateInfo);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        side: isFocused
+                            ? const BorderSide(color: Colors.white, width: 2)
+                            : null,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Actualizar ahora',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
-            child: const Text(
-              'Actualizar ahora',
-              style: TextStyle(color: Colors.white),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
-  
+
   // Descargar e instalar actualización
-  Future<void> _downloadAndInstallUpdate(Map<String, dynamic> updateInfo) async {
+  Future<void> _downloadAndInstallUpdate(
+    Map<String, dynamic> updateInfo,
+  ) async {
     // Mostrar diálogo de progreso
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => _DownloadProgressDialog(
-        downloadUrl: updateInfo['downloadUrl'],
-      ),
+      builder: (context) =>
+          _DownloadProgressDialog(downloadUrl: updateInfo['downloadUrl']),
     );
   }
 
@@ -1467,7 +1514,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
             return KeyEventResult.handled;
           }
         }
-        
+
         // Si el campo de búsqueda tiene el foco, ignorar otros eventos para permitir escribir
         if (_searchFocusNode.hasFocus) {
           return KeyEventResult.ignored;
@@ -2245,22 +2292,18 @@ class _ErrorScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.error_outline,
-                color: Colors.red,
-                size: 64,
-              ),
+              const Icon(Icons.error_outline, color: Colors.red, size: 64),
               const SizedBox(height: 24),
               Text(
                 error,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              ElevatedButton(onPressed: onRetry, child: const Text('Reintentar')),
+              ElevatedButton(
+                onPressed: onRetry,
+                child: const Text('Reintentar'),
+              ),
             ],
           ),
         ),
@@ -2276,7 +2319,8 @@ class _DownloadProgressDialog extends StatefulWidget {
   const _DownloadProgressDialog({required this.downloadUrl});
 
   @override
-  State<_DownloadProgressDialog> createState() => _DownloadProgressDialogState();
+  State<_DownloadProgressDialog> createState() =>
+      _DownloadProgressDialogState();
 }
 
 class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
@@ -2305,8 +2349,8 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
     if (mounted) {
       setState(() {
         _isDownloading = false;
-        _status = success 
-            ? '✅ Actualización lista para instalar' 
+        _status = success
+            ? '✅ Actualización lista para instalar'
             : '❌ Error al descargar';
       });
 
@@ -2324,9 +2368,7 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: Colors.grey[900],
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       title: const Row(
         children: [
           Icon(Icons.download, color: Colors.blue, size: 28),
@@ -2359,10 +2401,7 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
           const SizedBox(height: 12),
           Text(
             _status,
-            style: TextStyle(
-              color: Colors.grey[400],
-              fontSize: 14,
-            ),
+            style: TextStyle(color: Colors.grey[400], fontSize: 14),
             textAlign: TextAlign.center,
           ),
         ],
