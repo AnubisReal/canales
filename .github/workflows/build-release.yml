@@ -57,10 +57,11 @@ jobs:
             ### 📥 Descargar
             Descarga el APK `canales-v${{ steps.version.outputs.VERSION }}.apk` y instálalo en tu Android TV.
             
-            ### ✨ Novedades
-            - Actualización automática desde GitHub Releases
-            - Mejoras de rendimiento
-            - Corrección de bugs
+            ### ✨ Novedades v1.0.1
+            - 💜 Cambio de color del indicador EPG de verde a morado
+            - 🔄 Sistema de actualización automática implementado
+            - 🚀 Compilación automática con GitHub Actions
+            - 🐛 Correcciones menores
           draft: false
           prerelease: false
         env:

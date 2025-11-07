@@ -1946,7 +1946,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                         color: isRefreshing
                             ? Colors.orange.withOpacity(0.6)
                             : (isEpgLoaded
-                                  ? Colors.green.withOpacity(0.6)
+                                  ? Colors.purple.withOpacity(0.6)
                                   : Colors.grey.withOpacity(0.3)),
                         width: 1,
                       ),
@@ -1970,7 +1970,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                             height: 6,
                             margin: const EdgeInsets.only(right: 4),
                             decoration: BoxDecoration(
-                              color: Colors.green,
+                              color: Colors.purple,
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -1978,7 +1978,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                           'EPG',
                           style: TextStyle(
                             color: isEpgLoaded
-                                ? Colors.green
+                                ? Colors.purple
                                 : Colors.grey.withOpacity(0.5),
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
