@@ -87,19 +87,30 @@ class UpdateService {
     required Function(double) onProgress,
   }) async {
     try {
-      // Solicitar permisos de instalación
+      print('🔗 URL de descarga: $downloadUrl');
+      
+      // Solicitar permisos de almacenamiento primero
       if (Platform.isAndroid) {
-        // En Android 8.0+ necesitamos permiso para instalar APKs
-        final status = await Permission.requestInstallPackages.request();
-        if (!status.isGranted) {
-          print('⚠️ Permiso de instalación denegado');
-          return false;
+        final storageStatus = await Permission.storage.request();
+        if (!storageStatus.isGranted) {
+          print('⚠️ Permiso de almacenamiento denegado');
+          // Intentar con permisos de fotos en Android 13+
+          final photosStatus = await Permission.photos.request();
+          if (!photosStatus.isGranted) {
+            print('⚠️ No se pueden solicitar permisos de almacenamiento');
+          }
         }
       }
 
       // Obtener directorio de descargas
       final dir = await getExternalStorageDirectory();
-      final filePath = '${dir!.path}/canales_update.apk';
+      if (dir == null) {
+        print('❌ No se pudo obtener directorio de almacenamiento');
+        return false;
+      }
+      
+      final filePath = '${dir.path}/canales_update.apk';
+      print('📁 Guardando en: $filePath');
 
       print('📥 Descargando actualización...');
 
@@ -117,13 +128,32 @@ class UpdateService {
       );
 
       print('✅ Descarga completada');
+      
+      // Verificar que el archivo existe
+      final file = File(filePath);
+      if (!await file.exists()) {
+        print('❌ El archivo no existe después de descargar');
+        return false;
+      }
+      
+      final fileSize = await file.length();
+      print('📦 Tamaño del archivo: ${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB');
 
       // Instalar APK usando Android Intent
       if (Platform.isAndroid) {
+        // Solicitar permiso de instalación
+        final installStatus = await Permission.requestInstallPackages.request();
+        if (!installStatus.isGranted) {
+          print('⚠️ Permiso de instalación denegado');
+          return false;
+        }
+        
         final intent = AndroidIntent(
-          action: 'android.intent.action.VIEW',
+          action: 'android.intent.action.INSTALL_PACKAGE',
           data: 'file://$filePath',
-          type: 'application/vnd.android.package-archive',
+          arguments: {
+            'package': 'com.example.canales',
+          },
           flags: [
             Flag.FLAG_ACTIVITY_NEW_TASK,
             Flag.FLAG_GRANT_READ_URI_PERMISSION,
