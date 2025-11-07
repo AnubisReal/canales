@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
 
@@ -11,7 +10,13 @@ class UpdateService {
   static const String githubUser = 'AnubisReal';
   static const String githubRepo = 'canales';
 
-  static final Dio _dio = Dio();
+  static final Dio _dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(minutes: 5),
+      sendTimeout: const Duration(seconds: 30),
+    ),
+  );
 
   /// Verifica si hay una nueva versión disponible en GitHub Releases
   static Future<Map<String, dynamic>?> checkForUpdate() async {
@@ -89,20 +94,8 @@ class UpdateService {
     try {
       print('🔗 URL de descarga: $downloadUrl');
       
-      // Solicitar permisos de almacenamiento primero
-      if (Platform.isAndroid) {
-        final storageStatus = await Permission.storage.request();
-        if (!storageStatus.isGranted) {
-          print('⚠️ Permiso de almacenamiento denegado');
-          // Intentar con permisos de fotos en Android 13+
-          final photosStatus = await Permission.photos.request();
-          if (!photosStatus.isGranted) {
-            print('⚠️ No se pueden solicitar permisos de almacenamiento');
-          }
-        }
-      }
-
-      // Obtener directorio de descargas
+      // En Android TV, getExternalStorageDirectory() no necesita permisos especiales
+      // Obtener directorio de almacenamiento de la app
       final dir = await getExternalStorageDirectory();
       if (dir == null) {
         print('❌ No se pudo obtener directorio de almacenamiento');
@@ -112,25 +105,46 @@ class UpdateService {
       final filePath = '${dir.path}/canales_update.apk';
       print('📁 Guardando en: $filePath');
 
-      print('📥 Descargando actualización...');
+      // Eliminar archivo anterior si existe
+      final file = File(filePath);
+      if (await file.exists()) {
+        await file.delete();
+        print('🗑️ Archivo anterior eliminado');
+      }
 
-      // Descargar APK
-      await _dio.download(
+      print('📥 Iniciando descarga...');
+      final startTime = DateTime.now();
+
+      // Descargar APK con opciones específicas
+      final response = await _dio.download(
         downloadUrl,
         filePath,
+        options: Options(
+          responseType: ResponseType.bytes,
+          followRedirects: true,
+          validateStatus: (status) => status! < 500,
+        ),
         onReceiveProgress: (received, total) {
           if (total != -1) {
             final progress = received / total;
             onProgress(progress);
-            print('📊 Progreso: ${(progress * 100).toStringAsFixed(0)}%');
+            final speed = received / DateTime.now().difference(startTime).inSeconds;
+            final speedMB = speed / 1024 / 1024;
+            print('📊 Progreso: ${(progress * 100).toStringAsFixed(0)}% - ${speedMB.toStringAsFixed(2)} MB/s');
+          } else {
+            print('📊 Descargados: ${(received / 1024 / 1024).toStringAsFixed(2)} MB');
           }
         },
       );
 
-      print('✅ Descarga completada');
+      if (response.statusCode != 200) {
+        print('❌ Error HTTP: ${response.statusCode}');
+        return false;
+      }
+
+      print('✅ Descarga completada en ${DateTime.now().difference(startTime).inSeconds}s');
       
-      // Verificar que el archivo existe
-      final file = File(filePath);
+      // Verificar que el archivo existe y tiene contenido
       if (!await file.exists()) {
         print('❌ El archivo no existe después de descargar');
         return false;
@@ -138,22 +152,20 @@ class UpdateService {
       
       final fileSize = await file.length();
       print('📦 Tamaño del archivo: ${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB');
+      
+      if (fileSize < 1000000) { // Menos de 1MB es sospechoso
+        print('⚠️ El archivo parece demasiado pequeño');
+        return false;
+      }
 
       // Instalar APK usando Android Intent
       if (Platform.isAndroid) {
-        // Solicitar permiso de instalación
-        final installStatus = await Permission.requestInstallPackages.request();
-        if (!installStatus.isGranted) {
-          print('⚠️ Permiso de instalación denegado');
-          return false;
-        }
+        print('📲 Iniciando instalación...');
         
         final intent = AndroidIntent(
-          action: 'android.intent.action.INSTALL_PACKAGE',
+          action: 'android.intent.action.VIEW',
           data: 'file://$filePath',
-          arguments: {
-            'package': 'com.example.canales',
-          },
+          type: 'application/vnd.android.package-archive',
           flags: [
             Flag.FLAG_ACTIVITY_NEW_TASK,
             Flag.FLAG_GRANT_READ_URI_PERMISSION,
@@ -166,8 +178,9 @@ class UpdateService {
       }
 
       return false;
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('❌ Error al descargar/instalar: $e');
+      print('Stack trace: $stackTrace');
       return false;
     }
   }
