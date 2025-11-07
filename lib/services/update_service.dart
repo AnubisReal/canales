@@ -2,8 +2,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:android_intent_plus/android_intent.dart';
-import 'package:android_intent_plus/flag.dart';
+import 'package:open_filex/open_filex.dart';
 
 class UpdateService {
   // CONFIGURA AQUÍ TU USUARIO Y REPOSITORIO DE GITHUB
@@ -158,23 +157,23 @@ class UpdateService {
         return false;
       }
 
-      // Instalar APK usando Android Intent
+      // Instalar APK usando OpenFilex (maneja FileProvider automáticamente)
       if (Platform.isAndroid) {
         print('📲 Iniciando instalación...');
         
-        final intent = AndroidIntent(
-          action: 'android.intent.action.VIEW',
-          data: 'file://$filePath',
+        final result = await OpenFilex.open(
+          filePath,
           type: 'application/vnd.android.package-archive',
-          flags: [
-            Flag.FLAG_ACTIVITY_NEW_TASK,
-            Flag.FLAG_GRANT_READ_URI_PERMISSION,
-          ],
         );
-
-        await intent.launch();
-        print('✅ Instalación iniciada');
-        return true;
+        
+        print('✅ Resultado de instalación: ${result.type} - ${result.message}');
+        
+        if (result.type == ResultType.done) {
+          return true;
+        } else {
+          print('⚠️ No se pudo abrir el instalador: ${result.message}');
+          return false;
+        }
       }
 
       return false;
