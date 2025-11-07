@@ -58,9 +58,11 @@ jobs:
             Descarga el APK `canales-v${{ steps.version.outputs.VERSION }}.apk` y instálalo en tu Android TV.
             
             ### ✨ Novedades v1.0.1
-            - 💜 Cambio de color del indicador EPG de verde a morado
+            - 💜 Cambio de color del indicador EPG a morado oscuro (#6A0DAD)
             - 🔄 Sistema de actualización automática implementado
             - 🚀 Compilación automática con GitHub Actions
+            - 🔧 Mejoras en el proceso de descarga e instalación de actualizaciones
+            - 📦 Mejor manejo de permisos de almacenamiento
             - 🐛 Correcciones menores
           draft: false
           prerelease: false
