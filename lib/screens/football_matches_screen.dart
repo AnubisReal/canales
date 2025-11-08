@@ -87,7 +87,7 @@ class _FootballMatchesScreenState extends State<FootballMatchesScreen> {
     // Crear un mapa de channelId -> Channel para búsqueda rápida
     final channelMap = <String, Channel>{};
     for (final channel in widget.channels) {
-      final epgChannel = await EpgService.findMatchingEpgChannel(channel.name);
+      final epgChannel = await EpgService.findMatchingEpgChannel(channel.id);
       if (epgChannel != null) {
         channelMap[epgChannel.id] = channel;
       }

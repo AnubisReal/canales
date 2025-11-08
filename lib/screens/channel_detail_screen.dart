@@ -107,7 +107,7 @@ class _ChannelDetailScreenState extends State<ChannelDetailScreen> with SingleTi
 
   Future<void> _loadEpgData() async {
     // Buscar canal EPG que coincida (ahora es async)
-    _epgChannel = await EpgService.findMatchingEpgChannel(widget.channel.name);
+    _epgChannel = await EpgService.findMatchingEpgChannel(widget.channel.id);
 
     if (_epgChannel != null) {
       // Obtener programa actual

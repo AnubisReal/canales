@@ -5,46 +5,46 @@ on:
     branches:
       - main
       - master
-  workflow_dispatch:  # Permite ejecutar manualmente desde GitHub
+  workflow_dispatch: # Permite ejecutar manualmente desde GitHub
 
 jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: '17'
-      
+          distribution: "zulu"
+          java-version: "17"
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.7'
-          channel: 'stable'
-      
+          flutter-version: "3.35.7"
+          channel: "stable"
+
       - name: Get dependencies
         run: flutter pub get
-      
+
       - name: Build APK
         run: flutter build apk --release
-      
+
       - name: Get version from pubspec.yaml
         id: version
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Versión detectada: $VERSION"
-      
+
       - name: Rename APK
         run: |
           mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/canales-v${{ steps.version.outputs.VERSION }}.apk
-      
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
@@ -53,25 +53,22 @@ jobs:
           files: build/app/outputs/flutter-apk/canales-v${{ steps.version.outputs.VERSION }}.apk
           body: |
             ## 🎉 Nueva versión de Canales v${{ steps.version.outputs.VERSION }}
-            
+
             ### 📥 Descargar
             Descarga el APK `canales-v${{ steps.version.outputs.VERSION }}.apk` y instálalo en tu Android TV.
-            
+
             ### ✨ Novedades v${{ steps.version.outputs.VERSION }}
-            - 💜 Cambio de color del indicador EPG a morado (#4C2882)
-            - 🔄 Sistema de actualización automática completamente funcional
-            - 🚀 Compilación automática con GitHub Actions
-            - ⚡ Descarga de actualizaciones optimizada (timeout de 5 minutos)
-            - 📊 Indicador de velocidad de descarga en tiempo real
-            - 🔧 Eliminación de permisos innecesarios
-            - 🐛 Corrección de FileUriExposedException usando OpenFilex
-            - 📦 Validación de integridad del archivo descargado
-            - ✅ Instalación automática funcional en Android 7.0+ con FileProvider
+            - 🏷️ Nombres de canales limpios (sin sufijos HD, FHD, códigos)
+            - 🎯 Match exacto EPG por tvg-id (sin duplicados de programación)
+            - 🔤 Codificación UTF-8 correcta (tildes y ñ se muestran bien)
+            - 🎮 Navegación con mando de TV en diálogo de actualización
+            - 🐛 Corrección de programas duplicados en múltiples canales
+            - ✅ Guía EPG ahora coincide correctamente con cada canal
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
         with:

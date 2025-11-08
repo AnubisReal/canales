@@ -20,12 +20,18 @@ class Channel {
     final groupMatch = RegExp(r'group-title="([^"]*)"').firstMatch(extinf);
     final nameMatch = RegExp(r', (.+)$').firstMatch(extinf);
 
+    // Usar tvg-id como nombre si está disponible (viene limpio sin sufijos)
+    // Si no, usar el nombre del M3U
+    final tvgId = idMatch?.group(1)?.trim() ?? '';
+    final rawName = nameMatch?.group(1)?.trim() ?? 'Canal Desconocido';
+    final cleanName = tvgId.isNotEmpty ? tvgId : rawName;
+
     return Channel(
-      name: nameMatch?.group(1)?.trim() ?? 'Canal Desconocido',
+      name: cleanName,
       logoUrl: logoMatch?.group(1) ?? '',
       streamUrl: url.trim(),
       group: groupMatch?.group(1) ?? 'Sin Categoría',
-      id: idMatch?.group(1) ?? '',
+      id: tvgId,
     );
   }
 

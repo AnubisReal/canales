@@ -66,7 +66,7 @@ class FootballService {
         // Procesar lote en paralelo
         final results = await Future.wait(
           batch.map((channel) async {
-            final epgChannel = await EpgService.findMatchingEpgChannel(channel.name);
+            final epgChannel = await EpgService.findMatchingEpgChannel(channel.id);
             return {'channel': channel, 'epgChannel': epgChannel};
           }),
         );

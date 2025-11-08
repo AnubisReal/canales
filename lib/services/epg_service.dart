@@ -188,26 +188,21 @@ class EpgService {
     print('📊 HashMap construido con ${_channelsByNormalizedName.length} entradas');
   }
 
-  /// Busca un canal EPG que coincida con el nombre del canal M3U (optimizado con HashMap)
-  static Future<EpgChannel?> findMatchingEpgChannel(String m3uChannelName) async {
+  /// Busca un canal EPG que coincida con el tvg-id del canal M3U
+  static Future<EpgChannel?> findMatchingEpgChannel(String tvgId) async {
     // Asegurar que el EPG esté cargado
     await _ensureEpgLoaded();
     
-    if (_channelsByNormalizedName.isEmpty && _channels.isNotEmpty) {
-      _buildChannelHashMap();
+    // Si tvgId está vacío, no hay match posible
+    if (tvgId.isEmpty) {
+      return null;
     }
     
-    final normalized = _normalizeChannelName(m3uChannelName);
-
-    // Búsqueda exacta O(1)
-    if (_channelsByNormalizedName.containsKey(normalized)) {
-      return _channelsByNormalizedName[normalized];
-    }
-    
-    // Búsqueda parcial (fallback) - solo si no hay match exacto
-    for (final entry in _channelsByNormalizedName.entries) {
-      if (entry.key.contains(normalized) || normalized.contains(entry.key)) {
-        return entry.value;
+    // Búsqueda EXACTA por ID (sin normalización)
+    // Esto evita duplicados y asegura match correcto
+    for (final epgChannel in _channels) {
+      if (epgChannel.id == tvgId) {
+        return epgChannel;
       }
     }
 

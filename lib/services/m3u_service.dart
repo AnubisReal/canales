@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/channel.dart';
@@ -72,7 +73,8 @@ class M3UService {
       );
       
       if (response.statusCode == 200) {
-        final content = response.body;
+        // Forzar decodificación UTF-8 para caracteres especiales (tildes, ñ, etc.)
+        final content = utf8.decode(response.bodyBytes);
         final channels = _parseM3U(content);
         
         // Guardar en caché
@@ -108,7 +110,9 @@ class M3UService {
       );
       
       if (response.statusCode == 200) {
-        await _saveToCache(response.body);
+        // Forzar decodificación UTF-8
+        final content = utf8.decode(response.bodyBytes);
+        await _saveToCache(content);
         print('✅ Caché de canales actualizado en segundo plano');
       }
     } catch (e) {

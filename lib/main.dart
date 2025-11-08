@@ -514,7 +514,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
       for (final channel in channels) {
         // Buscar canal EPG correspondiente
         final epgChannel = await EpgService.findMatchingEpgChannel(
-          channel.name,
+          channel.id,
         );
         if (epgChannel == null) continue;
 
